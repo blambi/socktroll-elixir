@@ -2,7 +2,9 @@ defmodule Socktroll.Server do
   require Logger
 
   alias Socktroll.Room
-  
+  alias Socktroll.Protocol
+  alias Socktroll.User
+
   def accept(port) do
     {:ok, socket} = :gen_tcp.listen(port, [:binary, packet: :line, active: false, reuseaddr: true])
     Logger.info("Accepting connections on port #{port}")
@@ -12,35 +14,64 @@ defmodule Socktroll.Server do
   defp loop_acceptor(socket) do
     {:ok, client} = :gen_tcp.accept(socket)
     {:ok, pid} = Task.Supervisor.start_child(Socktroll.ClientSupervisor, fn ->
-      serve(client)
+      user = %User{
+        pid: self(),
+        socket: client
+      }
+      serve(user)
     end)
     :gen_tcp.controlling_process(client, pid)
-    Room.add_client(pid)
+
     loop_acceptor(socket)
   end
 
-  defp serve(socket) do
-    read_mbox(socket)
-    case read_line(socket) do
+  defp serve(user) do
+    read_mbox(user.socket)
+    case read_line(user.socket) do
       :error ->
         Logger.info("Lost a client")
-        Socktroll.Room.remove_client()
+        if user.nick do
+          Socktroll.Room.remove_client()
+        end
         :error
       :timeout ->
-        serve(socket)
+        serve(user)
       data ->
         #write_line(data, socket)
-        Room.say(data)
-        serve(socket)
+        user =
+          case Protocol.handle(user, data) do
+            {:reply, user, message} ->
+              write_line(message, user.socket)
+              user
+            {:noreply, user} ->
+              user
+            :exit ->
+              if user.nick do
+                Socktroll.Room.remove_client()
+              end
+              nil # ensure we don't have a user (and there by disconnect?)
+          end
+
+        if user do
+          serve(user)
+        end
     end
   end
 
   defp read_mbox(socket) do
     receive do
-      {:say, message} ->
-        write_line(message, socket)
+      {:say, sender, message} ->
+        write_line("msg " <> sender <> " " <> message, socket)
+      {:join, who} ->
+        write_line("+ " <> who, socket)
+      {:part, who} ->
+        write_line("- " <> who, socket)
+      {:rename, from, to} ->
+        write_line("rename " <> from <> " " <> to, socket)
+      {:action, who, message} ->
+        write_line("action " <> who <> " " <> message, socket)
       _ ->
-        Logger.warn("Strange messages to a client from us!")
+        Logger.warn("Strange messages was recived internaly!")
     after
       10 ->
         nil
