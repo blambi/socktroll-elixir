@@ -6,7 +6,7 @@ defmodule Socktroll do
 
     children = [
       supervisor(Task.Supervisor, [[name: Socktroll.ClientSupervisor]]),
-      worker(Task, [Socktroll.Server, :accept, [6000]]),
+      worker(Task, [Socktroll.Server, :accept, [Application.get_env(:socktroll, :port)]]),
       worker(Socktroll.Room, [])
     ]
 
