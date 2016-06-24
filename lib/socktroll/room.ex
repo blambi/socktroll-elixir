@@ -38,7 +38,6 @@ defmodule Socktroll.Room do
   end
 
   ## Callbacks
-
   def handle_call({:add, user}, _from, state) do
     Enum.each(state, fn({_pid, client}) -> # Send message to everyone
       send(client.pid, {:join, user.nick})

@@ -3,7 +3,7 @@ defmodule Socktroll.Protocol do
   alias Socktroll.Room
   alias Socktroll.User
 
-  def handle(user=%User{nick: nil}, "nick " <> nick) do
+  def handle(user = %User{nick: nil}, "nick " <> nick) do
     if nick in Room.nicks() do
       # taken
       {:reply, user, "no taken"}
@@ -26,7 +26,7 @@ defmodule Socktroll.Protocol do
     end
   end
 
-  def handle(user=%User{nick: nil}, "msg " <> nick) do
+  def handle(user = %User{nick: nil}, "msg " <> nick) do
     {:reply, user, "msg server You must choose a nick first"}
   end
 
@@ -35,7 +35,7 @@ defmodule Socktroll.Protocol do
     {:noreply, user}
   end
 
-  def handle(user=%User{nick: nil}, "action " <> nick) do
+  def handle(user = %User{nick: nil}, "action " <> nick) do
     {:reply, user, "msg server You must choose a nick first"}
   end
 
@@ -57,7 +57,6 @@ defmodule Socktroll.Protocol do
     {:reply, user, "illegal command"}
   end
 
-
   defp build_names([nick | names]) do
     build_names(names, nick)
   end
@@ -69,5 +68,4 @@ defmodule Socktroll.Protocol do
   defp build_names([], string) do
     string
   end
-
 end

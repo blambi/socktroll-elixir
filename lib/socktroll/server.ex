@@ -37,7 +37,6 @@ defmodule Socktroll.Server do
       :timeout ->
         serve(user)
       data ->
-        #write_line(data, socket)
         user =
           case Protocol.handle(user, data) do
             {:reply, user, message} ->
